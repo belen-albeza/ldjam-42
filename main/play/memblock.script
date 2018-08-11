@@ -2,6 +2,7 @@ go.property("width", 1)
 go.property("value", 1)
 go.property("template", hash("block_1x1_a"))
 go.property("color", 3)
+go.property("map", msg.url())
 
 local BANK_X = 32
 local BANK_Y = 96
@@ -9,7 +10,7 @@ local BANK_COLS = 16
 local BANK_ROWS = 16
 local TSIZE = 32
 
-local get_template
+local get_template, snap_to_grid, place_into_map
 
 local TEMPLATES = {
 	{ id = hash("block_1x1_a"), grid = {1}, w = 1, h = 1 },
@@ -23,13 +24,16 @@ function init(self)
 	local i = 1
 	for x=1,self.template.w do
 		for y=1,self.template.h do
-			print(self.template.grid[i])
 			if self.template.grid[i] > 0 then
 				tilemap.set_tile("#grid", "main", x, y, go.get("#", "color"))
 			end
 			i = i + 1
 		end
 	end
+
+	self.target_position = vmath.vector3(go.get_position())
+	self.grid_position = vmath.vector3()
+	snap_to_grid(self)
 end
 
 function final(self)
@@ -38,21 +42,15 @@ function final(self)
 end
 
 function update(self, dt)
-	-- snap to grid
-	local col = math.min(math.max(0, math.floor((self.target_position.x - BANK_X) / TSIZE)), BANK_COLS - 1)
-	local row = math.min(math.max(0, math.floor((self.target_position.y - BANK_Y) / TSIZE)), BANK_ROWS - 1)
-	
-	local position = vmath.vector3(
-		BANK_X + col * TSIZE,
-		BANK_Y + row * TSIZE,
-		self.target_position.z
-	)
-	go.set_position(position)
+	snap_to_grid(self)
 end
 
 function on_message(self, message_id, message, sender)
 	if message_id == hash("target_position") then
 		self.target_position = message.position
+	elseif message_id == hash("place_into_map") then
+		place_into_map(self)
+		go.delete(".")
 	end
 end
 
@@ -71,4 +69,34 @@ function get_template(id)
 	end
 
 	return nil
+end
+
+function snap_to_grid(self)
+	local col = math.min(math.max(0, math.floor(
+		(self.target_position.x - BANK_X) / TSIZE)), BANK_COLS - self.template.w)
+	local row = math.min(math.max(0, math.floor(
+		(self.target_position.y - BANK_Y) / TSIZE)), BANK_ROWS - self.template.h)
+
+	self.grid_position = vmath.vector3(col, row, 0)
+
+	local position = vmath.vector3(
+		BANK_X + col * TSIZE,
+		BANK_Y + row * TSIZE,
+		self.target_position.z
+	)
+	go.set_position(position)
+end
+
+function place_into_map(self)
+	local i = 1
+	for x=1,self.template.w do
+		for y=1,self.template.h do
+			if self.template.grid[i] > 0 then
+				local col = x + self.grid_position.x
+				local row = y + self.grid_position.y
+				tilemap.set_tile(go.get("#", "map"), "main", col, row, go.get("#", "color"))
+			end
+			i = i + 1
+		end
+	end
 end
