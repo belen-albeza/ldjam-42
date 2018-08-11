@@ -1,6 +1,14 @@
 local spawn_memblock
 
-TSIZE = 32
+local TSIZE = 32
+local BLOCK_TYPES = {
+	"1x1_a",
+	"2x2_a",
+	"2x2_b"
+}
+
+local MIN_BLOCK_COLOR = 3
+local MAX_BLOCK_COLOR = 6
 
 function init(self)
 	local cursor_image = resource.load("/assets/resources/cursor.png")
@@ -10,7 +18,7 @@ function init(self)
 	self.mouse_x = 0
 	self.mouse_y = 0
 
-	self.active_block = spawn_memblock(self.mouse_x, self.mouse_y, "block_2x2_b")
+	self.active_block = spawn_memblock(self.mouse_x, self.mouse_y)
 end
 
 function final(self)
@@ -24,8 +32,12 @@ function update(self, dt)
 end
 
 function on_message(self, message_id, message, sender)
-	-- Add message-handling code here
-	-- Remove this function if not needed
+	if message_id == hash("was_memblock_placed") then
+		if message.result then 
+			go.delete(self.active_block)
+			self.active_block = spawn_memblock(self.mouse_x, self.mouse_y, "block_2x2_a")
+		end
+	end
 end
 
 function on_input(self, action_id, action)
@@ -36,15 +48,16 @@ function on_input(self, action_id, action)
 		msg.post(self.active_block, "target_position", { position = new_position })
 	elseif action_id == hash("touch") and action.pressed then -- mouse click
 		msg.post(self.active_block, "place_into_map")
-		self.active_block = spawn_memblock(self.mouse_x, self.mouse_y, "block_2x2_a")
 	end
 end
 
 -- ----------------------------------------------------------
 
-function spawn_memblock(x, y, which)
+function spawn_memblock(x, y)
+	local color = math.random(MIN_BLOCK_COLOR, MAX_BLOCK_COLOR)
+	local template = BLOCK_TYPES[math.random(#BLOCK_TYPES)]
+
 	local memblock = factory.create("membank#factory", vmath.vector3(x, y, 0.5), nil,
-		{ template = hash(which), map = msg.url("membank#map") })
+		{ template = hash(template), map = msg.url("membank#map"), color = color })
 	return memblock
-	--msg.post(memblock, "set_parent", { parent_id = go.get_id("membank"), keep_world_transform = 0 })
 end

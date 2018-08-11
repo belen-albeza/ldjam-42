@@ -10,26 +10,24 @@ local BANK_COLS = 16
 local BANK_ROWS = 16
 local TSIZE = 32
 
-local get_template, snap_to_grid, place_into_map
+local get_template, for_each_cell, snap_to_grid, place_into_map, overlap_with_map
 
 local TEMPLATES = {
-	{ id = hash("block_1x1_a"), grid = {1}, w = 1, h = 1 },
-	{ id = hash("block_2x2_a"), grid = {1, 1, 1, 1}, w = 2, h = 2 },
-	{ id = hash("block_2x2_b"), grid = {1, 1, 1, 0}, w = 2, h = 2 }
+	{ id = hash("1x1_a"), grid = {1}, w = 1, h = 1 },
+	{ id = hash("2x2_a"), grid = {1, 1, 1, 1}, w = 2, h = 2 },
+	{ id = hash("2x2_b"), grid = {1, 1, 1, 0}, w = 2, h = 2 }
 }
+
+local COLLISION_COLOR = 2
 
 function init(self)
 	self.template = get_template(go.get("#", "template"))
 
-	local i = 1
-	for x=1,self.template.w do
-		for y=1,self.template.h do
-			if self.template.grid[i] > 0 then
-				tilemap.set_tile("#grid", "main", x, y, go.get("#", "color"))
-			end
-			i = i + 1
+	for_each_cell(self, function (cell, x, y, i)
+		if cell > 0 then
+			tilemap.set_tile("#grid", "main", x, y, go.get("#", "color"))
 		end
-	end
+	end)
 
 	self.target_position = vmath.vector3(go.get_position())
 	self.grid_position = vmath.vector3()
@@ -48,9 +46,10 @@ end
 function on_message(self, message_id, message, sender)
 	if message_id == hash("target_position") then
 		self.target_position = message.position
+		overlap_with_map(self)
 	elseif message_id == hash("place_into_map") then
-		place_into_map(self)
-		go.delete(".")
+		local was_placed = place_into_map(self)
+		msg.post(sender, "was_memblock_placed", { result = was_placed })
 	end
 end
 
@@ -60,6 +59,16 @@ function on_input(self, action_id, action)
 end
 
 -- ----------------------------------------------
+
+function for_each_cell(self, callback)
+	local i = 1
+	for x=1,self.template.w do
+		for y=1,self.template.h do
+			callback(self.template.grid[i], x, y, i)
+			i = i + 1
+		end
+	end
+end
 
 function get_template(id)
 	for i=1,#TEMPLATES do
@@ -88,15 +97,36 @@ function snap_to_grid(self)
 end
 
 function place_into_map(self)
-	local i = 1
-	for x=1,self.template.w do
-		for y=1,self.template.h do
-			if self.template.grid[i] > 0 then
-				local col = x + self.grid_position.x
-				local row = y + self.grid_position.y
-				tilemap.set_tile(go.get("#", "map"), "main", col, row, go.get("#", "color"))
-			end
-			i = i + 1
+	if overlap_with_map(self) then return false end
+	
+	for_each_cell(self, function(cell, x, y)
+		if cell > 0 then
+			local col = x + self.grid_position.x
+			local row = y + self.grid_position.y
+			tilemap.set_tile(go.get("#", "map"), "main", col, row, go.get("#", "color"))
 		end
-	end
+	end)
+
+	return true
+end
+
+
+function overlap_with_map(self)
+	local is_collision = false
+	
+	for_each_cell(self, function(cell, x, y, i)
+		if cell > 0 then
+			local col = self.grid_position.x + x
+			local row = self.grid_position.y + y
+			local map_cell = tilemap.get_tile(go.get("#", "map"), "main", col, row)
+			if map_cell > 1 then
+				is_collision = true
+				tilemap.set_tile("#grid", "main", x, y, COLLISION_COLOR)
+			else
+				tilemap.set_tile("#grid", "main", x, y, go.get("#", "color"))
+			end
+		end
+	end)
+	
+	return is_collision
 end
