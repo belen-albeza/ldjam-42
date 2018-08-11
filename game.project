@@ -5,7 +5,7 @@ main_collection = /main/main.collectionc
 shared_state = 1
 
 [project]
-title = Ludum Dare #42
+title = ldjam42
 
 [graphics]
 default_texture_min_filter = nearest
@@ -13,4 +13,7 @@ default_texture_mag_filter = nearest
 
 [sprite]
 subpixels = 0
+
+[html5]
+htmlfile = /shell/index.html
 
