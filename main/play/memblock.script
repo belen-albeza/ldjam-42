@@ -1,5 +1,7 @@
 go.property("width", 1)
 go.property("value", 1)
+go.property("template", hash("block_1x1_a"))
+go.property("color", 3)
 
 local BANK_X = 32
 local BANK_Y = 96
@@ -7,7 +9,27 @@ local BANK_COLS = 16
 local BANK_ROWS = 16
 local TSIZE = 32
 
+local get_template
+
+local TEMPLATES = {
+	{ id = hash("block_1x1_a"), grid = {1}, w = 1, h = 1 },
+	{ id = hash("block_2x2_a"), grid = {1, 1, 1, 1}, w = 2, h = 2 },
+	{ id = hash("block_2x2_b"), grid = {1, 1, 1, 0}, w = 2, h = 2 }
+}
+
 function init(self)
+	self.template = get_template(go.get("#", "template"))
+
+	local i = 1
+	for x=1,self.template.w do
+		for y=1,self.template.h do
+			print(self.template.grid[i])
+			if self.template.grid[i] > 0 then
+				tilemap.set_tile("#grid", "main", x, y, go.get("#", "color"))
+			end
+			i = i + 1
+		end
+	end
 end
 
 function final(self)
@@ -21,8 +43,8 @@ function update(self, dt)
 	local row = math.min(math.max(0, math.floor((self.target_position.y - BANK_Y) / TSIZE)), BANK_ROWS - 1)
 	
 	local position = vmath.vector3(
-		16 + BANK_X + col * TSIZE,
-		16 + BANK_Y + row * TSIZE,
+		BANK_X + col * TSIZE,
+		BANK_Y + row * TSIZE,
 		self.target_position.z
 	)
 	go.set_position(position)
@@ -37,4 +59,16 @@ end
 function on_input(self, action_id, action)
 	-- Add input-handling code here
 	-- Remove this function if not needed
+end
+
+-- ----------------------------------------------
+
+function get_template(id)
+	for i=1,#TEMPLATES do
+		if TEMPLATES[i].id == id then
+			return TEMPLATES[i]
+		end
+	end
+
+	return nil
 end

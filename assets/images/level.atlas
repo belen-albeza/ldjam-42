@@ -1,6 +1,15 @@
 images {
   image: "/assets/images/level_background.png"
 }
+images {
+  image: "/assets/images/block_pink.png"
+}
+images {
+  image: "/assets/images/bank.png"
+}
+images {
+  image: "/assets/images/cursor.png"
+}
 margin: 0
 extrude_borders: 0
 inner_padding: 0

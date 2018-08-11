@@ -6,6 +6,8 @@ shared_state = 1
 
 [project]
 title = ldjam42
+dependencies = https://github.com/subsoap/defos/archive/master.zip
+custom_resources = assets/resources
 
 [graphics]
 default_texture_min_filter = nearest

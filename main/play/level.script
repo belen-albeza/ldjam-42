@@ -10,7 +10,7 @@ function init(self)
 	self.mouse_x = 0
 	self.mouse_y = 0
 
-	self.active_block = spawn_memblock(self.mouse_x, self.mouse_y, "1x1-a")
+	self.active_block = spawn_memblock(self.mouse_x, self.mouse_y, "block_2x2_b")
 end
 
 function final(self)
@@ -34,14 +34,13 @@ function on_input(self, action_id, action)
 		self.mouse_y = action.screen_y
 		local new_position = vmath.vector3(self.mouse_x, self.mouse_y, 0.5)
 		msg.post(self.active_block, "target_position", { position = new_position })
-		--go.set_position(new_position, self.active_block)
 	end
 end
 
 -- ----------------------------------------------------------
 
 function spawn_memblock(x, y, which)
-	local memblock = factory.create("memblock_spawner#factory", vmath.vector3(x, y, 0.5))
+	local memblock = factory.create("membank#factory", vmath.vector3(x, y, 0.5), nil, { template = hash(which) })
 	return memblock
 	--msg.post(memblock, "set_parent", { parent_id = go.get_id("membank"), keep_world_transform = 0 })
 end
