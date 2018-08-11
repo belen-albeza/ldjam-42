@@ -10,7 +10,8 @@ local BANK_COLS = 16
 local BANK_ROWS = 16
 local TSIZE = 32
 
-local get_template, for_each_cell, snap_to_grid, place_into_map, overlap_with_map
+local get_template, for_each_cell, snap_to_grid, place_into_map, overlap_with_map,
+	collide_with_point, is_target_position_over_bank
 
 local TEMPLATES = {
 	{ id = hash("1x1_a"), grid = {1}, w = 1, h = 1 },
@@ -22,6 +23,7 @@ local COLLISION_COLOR = 2
 
 function init(self)
 	self.template = get_template(go.get("#", "template"))
+	self.offset = vmath.vector3(-self.template.w * TSIZE / 2, -self.template.h * TSIZE / 2, 0)
 
 	for_each_cell(self, function (cell, x, y, i)
 		if cell > 0 then
@@ -29,9 +31,8 @@ function init(self)
 		end
 	end)
 
-	self.target_position = vmath.vector3(go.get_position())
+	self.target_position = nil
 	self.grid_position = vmath.vector3()
-	snap_to_grid(self)
 end
 
 function final(self)
@@ -40,7 +41,12 @@ function final(self)
 end
 
 function update(self, dt)
-	snap_to_grid(self)
+	if self.target_position then
+		go.set_position(self.target_position + self.offset)
+		if is_target_position_over_bank(self) then
+			snap_to_grid(self)
+		end
+	end
 end
 
 function on_message(self, message_id, message, sender)
@@ -50,6 +56,11 @@ function on_message(self, message_id, message, sender)
 	elseif message_id == hash("place_into_map") then
 		local was_placed = place_into_map(self)
 		msg.post(sender, "was_memblock_placed", { result = was_placed })
+	elseif message_id == hash("check_cursor_overlap") then
+		local collision = collide_with_point(self, message.x, message.y)
+		if collision then
+			msg.post(sender, "cursor_overlap_result", { result = collision })
+		end
 	end
 end
 
@@ -82,16 +93,16 @@ end
 
 function snap_to_grid(self)
 	local col = math.min(math.max(0, math.floor(
-		(self.target_position.x - BANK_X) / TSIZE)), BANK_COLS - self.template.w)
+		(go.get_position().x - BANK_X) / TSIZE)), BANK_COLS - self.template.w)
 	local row = math.min(math.max(0, math.floor(
-		(self.target_position.y - BANK_Y) / TSIZE)), BANK_ROWS - self.template.h)
+		(go.get_position().y - BANK_Y) / TSIZE)), BANK_ROWS - self.template.h)
 
 	self.grid_position = vmath.vector3(col, row, 0)
 
 	local position = vmath.vector3(
 		BANK_X + col * TSIZE,
 		BANK_Y + row * TSIZE,
-		self.target_position.z
+		go.get_position().z
 	)
 	go.set_position(position)
 end
@@ -129,4 +140,22 @@ function overlap_with_map(self)
 	end)
 	
 	return is_collision
+end
+
+function collide_with_point(self, x, y)
+	local position = go.get_position()
+	local w = self.template.w * TSIZE
+	local h = self.template.h * TSIZE
+
+	return x >= position.x and x < position.x + w and
+		y >= position.y and y < position.y + h
+end
+
+function is_target_position_over_bank(self)
+	local x = self.target_position.x
+	local y = self.target_position.y
+	local w = BANK_COLS * TSIZE
+	local h = BANK_ROWS * TSIZE
+	
+	return x >= BANK_X and x < BANK_X + w and y >= BANK_Y and y < BANK_Y + h
 end

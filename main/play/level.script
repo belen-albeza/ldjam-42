@@ -1,4 +1,4 @@
-local spawn_memblock
+local spawn_memblock, drag_memblock
 
 local TSIZE = 32
 local BLOCK_TYPES = {
@@ -6,6 +6,9 @@ local BLOCK_TYPES = {
 	"2x2_a",
 	"2x2_b"
 }
+
+local QUEUE_X = 736
+local QUEUE_Y = 480
 
 local MIN_BLOCK_COLOR = 3
 local MAX_BLOCK_COLOR = 6
@@ -18,7 +21,8 @@ function init(self)
 	self.mouse_x = 0
 	self.mouse_y = 0
 
-	self.active_block = spawn_memblock(self.mouse_x, self.mouse_y)
+	self.queued_block = spawn_memblock(QUEUE_X, QUEUE_Y)
+	self.active_block = nil -- spawn_memblock(self.mouse_x, self.mouse_y)
 end
 
 function final(self)
@@ -35,7 +39,13 @@ function on_message(self, message_id, message, sender)
 	if message_id == hash("was_memblock_placed") then
 		if message.result then 
 			go.delete(self.active_block)
-			self.active_block = spawn_memblock(self.mouse_x, self.mouse_y, "block_2x2_a")
+			self.active_block = nil
+			self.queued_block = spawn_memblock(QUEUE_X, QUEUE_Y)
+		end
+	elseif message_id == hash("cursor_overlap_result") then
+		if message.result then
+			self.active_block = self.queued_block
+			drag_memblock(self)
 		end
 	end
 end
@@ -44,10 +54,15 @@ function on_input(self, action_id, action)
 	if action_id == nil then --mouse move
 		self.mouse_x = action.screen_x
 		self.mouse_y = action.screen_y
-		local new_position = vmath.vector3(self.mouse_x, self.mouse_y, 0.5)
-		msg.post(self.active_block, "target_position", { position = new_position })
+		if self.active_block then
+			drag_memblock(self)
+		end
 	elseif action_id == hash("touch") and action.pressed then -- mouse click
-		msg.post(self.active_block, "place_into_map")
+		if self.active_block then
+			msg.post(self.active_block, "place_into_map")
+		elseif self.queued_block then
+			msg.post(self.queued_block, "check_cursor_overlap", {x = action.screen_x, y = action.screen_y })
+		end
 	end
 end
 
@@ -60,4 +75,9 @@ function spawn_memblock(x, y)
 	local memblock = factory.create("membank#factory", vmath.vector3(x, y, 0.5), nil,
 		{ template = hash(template), map = msg.url("membank#map"), color = color })
 	return memblock
+end
+
+function drag_memblock(self)
+	local new_position = vmath.vector3(self.mouse_x, self.mouse_y, 0.5)
+	msg.post(self.active_block, "target_position", { position = new_position })
 end
