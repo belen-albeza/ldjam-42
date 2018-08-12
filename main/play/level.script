@@ -7,7 +7,7 @@ local BLOCK_TYPES = {
 	"2x2_b"
 }
 
-local QUEUE_X = 736
+local QUEUE_X = 608
 local QUEUE_Y = 480
 
 local MIN_BLOCK_COLOR = 3
