@@ -5,9 +5,9 @@ go.property("color", 3)
 go.property("bank", msg.url())
 
 local BANK_X = 32
-local BANK_Y = 96
-local BANK_COLS = 16
-local BANK_ROWS = 16
+local BANK_Y = 224
+local BANK_COLS = 12
+local BANK_ROWS = 12
 local TSIZE = 32
 
 local get_template, for_each_cell, snap_to_grid, place_into_map, overlap_with_map,

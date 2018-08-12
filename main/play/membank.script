@@ -2,8 +2,8 @@ go.property("level", msg.url())
 
 local place_block, remove_block, for_each_block_cell, init_cache, cache_at_point
 
-local COLS = 16
-local ROWS = 16
+local COLS = 12
+local ROWS = 12
 local TSIZE = 32
 
 function init(self)
