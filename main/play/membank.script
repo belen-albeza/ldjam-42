@@ -1,0 +1,103 @@
+go.property("level", msg.url())
+
+local place_block, for_each_block_cell, init_cache
+
+local COLS = 16
+local ROWS = 16
+
+function init(self)
+	self.width = COLS
+	self.height = ROWS
+	
+	self.cache = create_cache(self)
+end
+
+function final(self)
+	-- Add finalization code here
+	-- Remove this function if not needed
+end
+
+function update(self, dt)
+	-- Add update code here
+	-- Remove this function if not needed
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("place_block") then
+		local was_placed = place_block(self, message.block_id, message.block_data)
+		if was_placed then
+			msg.post(go.get("#", "level"), "memblock_placed")
+		end
+	end
+end
+
+function on_input(self, action_id, action)
+	-- Add input-handling code here
+	-- Remove this function if not needed
+end
+
+function on_reload(self)
+	-- Add reload-handling code here
+	-- Remove this function if not needed
+end
+
+--- --------------------------------------
+
+function does_block_overlap(self, block_data)
+	local result = false
+	
+	for_each_block_cell(block_data, function(cell, x, y, i)
+		if cell > 0 then
+			local col = block_data.col + x
+			local row = block_data.row + y
+			local map_cell = tilemap.get_tile("#map", "main", col, row)
+			if map_cell > 1 then
+				result = true
+			end
+		end
+	end)
+
+	return result
+end
+
+function place_block(self, block_id, block_data)
+	if does_block_overlap(self, block_data) then return false end
+
+	for_each_block_cell(block_data, function(cell, x, y)
+		if cell > 0 then
+			local col = x + block_data.col
+			local row = y + block_data.row
+			tilemap.set_tile("#map", "main", col, row, block_data.color)
+			write_in_cache(self, col, row, block_id)
+		end
+	end)
+
+	return true
+end
+
+function for_each_block_cell(block_data, callback)
+	local template = block_data.template
+	local i = 1
+	for x=1,template.w do
+		for y=1,template.h do
+			callback(template.grid[i], x, y, i)
+			i = i + 1
+		end
+	end
+end
+
+function write_in_cache(self, col, row, value)
+	self.cache[(row - 1) * self.width + col] = value
+end
+
+function create_cache(self)
+	local res = {}
+
+	for x=1,self.width do
+		for y=1,self.height do
+			table.insert(res, nil)
+		end
+	end
+
+	return res
+end
