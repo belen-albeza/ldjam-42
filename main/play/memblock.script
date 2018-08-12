@@ -31,8 +31,6 @@ function init(self)
 		end
 	end)
 
-	print(msg.url(go.get("#", "bank")).path)
-
 	self.target_position = nil
 	self.grid_position = vmath.vector3()
 end
@@ -67,7 +65,7 @@ function on_message(self, message_id, message, sender)
 	elseif message_id == hash("check_cursor_overlap") then
 		local collision = collide_with_point(self, message.x, message.y)
 		if collision then
-			msg.post(sender, "cursor_overlap_result", { result = collision })
+			msg.post(sender, "memblock_overlap", { block_id = go.get_id() })
 		end
 	end
 end

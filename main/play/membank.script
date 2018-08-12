@@ -1,9 +1,10 @@
 go.property("level", msg.url())
 
-local place_block, for_each_block_cell, init_cache
+local place_block, remove_block, for_each_block_cell, init_cache, cache_at_point
 
 local COLS = 16
 local ROWS = 16
+local TSIZE = 32
 
 function init(self)
 	self.width = COLS
@@ -28,6 +29,13 @@ function on_message(self, message_id, message, sender)
 		if was_placed then
 			msg.post(go.get("#", "level"), "memblock_placed")
 		end
+	elseif message_id == hash("check_cursor_overlap") then
+		local cached_block = cache_at_point(self, message.x, message.y)
+		if cached_block then
+			msg.post(sender, "memblock_overlap", { block_id = cached_block })
+		end
+	elseif message_id == hash("remove_block") then
+		remove_block(self, message.block_id)
 	end
 end
 
@@ -75,6 +83,18 @@ function place_block(self, block_id, block_data)
 	return true
 end
 
+function remove_block(self, block_id)
+	for x=1,COLS do
+		for y=1,ROWS do
+			local cached_block = read_from_cache(self, x, y)
+			if cached_block == block_id then
+				write_in_cache(self, x, y, nil)
+				tilemap.set_tile("#map", "main", x, y, 0)
+			end
+		end
+	end
+end
+
 function for_each_block_cell(block_data, callback)
 	local template = block_data.template
 	local i = 1
@@ -90,6 +110,10 @@ function write_in_cache(self, col, row, value)
 	self.cache[(row - 1) * self.width + col] = value
 end
 
+function read_from_cache(self, col, row)
+	return self.cache[(row - 1) * self.width + col]
+end
+
 function create_cache(self)
 	local res = {}
 
@@ -100,4 +124,18 @@ function create_cache(self)
 	end
 
 	return res
+end
+
+-- cached block at screen coordinates
+function cache_at_point(self, x, y)
+	local position = go.get_position()
+
+	local col = math.floor((x - position.x) / TSIZE) + 1
+	local row = math.floor((y - position.y) / TSIZE) + 1
+
+	if col >= 1 and col <= COLS and row >= 1 and row <= ROWS then
+		return read_from_cache(self, col, row)
+	end
+	
+	return nil
 end

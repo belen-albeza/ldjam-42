@@ -40,15 +40,19 @@ end
 
 function on_message(self, message_id, message, sender)
 	if message_id == hash("memblock_placed") then
-		--go.delete(self.active_block)
 		msg.post(self.active_block, "disable")
-		self.active_block = nil
-		self.queued_block = spawn_memblock(self, QUEUE_X, QUEUE_Y)
-	elseif message_id == hash("cursor_overlap_result") then
-		if message.result then
-			self.active_block = self.queued_block
-			drag_memblock(self)
+		if self.active_block == self.queued_block then
+			self.queued_block = spawn_memblock(self, QUEUE_X, QUEUE_Y)
 		end
+		self.active_block = nil
+		
+	elseif message_id == hash("memblock_overlap") then
+		self.active_block = message.block_id
+		if self.active_block ~= self.queued_block then
+			msg.post("main:/level/membank", "remove_block", { block_id = message.block_id })
+		end
+		msg.post(self.active_block, "enable")
+		drag_memblock(self)
 	end
 end
 
@@ -64,6 +68,7 @@ function on_input(self, action_id, action)
 			msg.post(self.active_block, "place_into_map")
 		else
 			msg.post(self.queued_block, "check_cursor_overlap", {x = action.screen_x, y = action.screen_y })
+			msg.post("main:/level/membank", "check_cursor_overlap", { x = action.screen_x, y = action.screen_y })
 		end
 	end
 end
