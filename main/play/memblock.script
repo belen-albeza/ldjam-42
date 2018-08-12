@@ -2,7 +2,7 @@ go.property("width", 1)
 go.property("value", 1)
 go.property("template", hash("block_1x1_a"))
 go.property("color", 3)
-go.property("map", msg.url())
+go.property("bank", msg.url())
 
 local BANK_X = 32
 local BANK_Y = 96
@@ -31,6 +31,8 @@ function init(self)
 		end
 	end)
 
+	print(msg.url(go.get("#", "bank")).path)
+
 	self.target_position = nil
 	self.grid_position = vmath.vector3()
 end
@@ -50,12 +52,17 @@ function update(self, dt)
 end
 
 function on_message(self, message_id, message, sender)
+	-- level sends command to make a block target a position
 	if message_id == hash("target_position") then
 		self.target_position = message.position
 		overlap_with_map(self)
+
+	-- level sends command to place a block into the bank
 	elseif message_id == hash("place_into_map") then
-		local was_placed = place_into_map(self)
-		msg.post(sender, "was_memblock_placed", { result = was_placed })
+		self.level = sender
+		place_into_map(self)
+
+	-- level asks if mouse is over this memblock
 	elseif message_id == hash("check_cursor_overlap") then
 		local collision = collide_with_point(self, message.x, message.y)
 		if collision then
@@ -108,28 +115,27 @@ function snap_to_grid(self)
 end
 
 function place_into_map(self)
-	if overlap_with_map(self) then return false end
-	
-	for_each_cell(self, function(cell, x, y)
-		if cell > 0 then
-			local col = x + self.grid_position.x
-			local row = y + self.grid_position.y
-			tilemap.set_tile(go.get("#", "map"), "main", col, row, go.get("#", "color"))
-		end
-	end)
-
-	return true
+	msg.post(go.get("#", "bank"), "place_block", {
+		block_id = go.get_id(),
+		block_data = {
+			col = self.grid_position.x,
+			row = self.grid_position.y,
+			color = go.get("#", "color"),
+			template = self.template
+		}
+	})
 end
 
 
 function overlap_with_map(self)
 	local is_collision = false
+	local map_url = msg.url(go.get("#", "bank").socket, go.get("#", "bank").path, "map")
 	
 	for_each_cell(self, function(cell, x, y, i)
 		if cell > 0 then
 			local col = self.grid_position.x + x
 			local row = self.grid_position.y + y
-			local map_cell = tilemap.get_tile(go.get("#", "map"), "main", col, row)
+			local map_cell = tilemap.get_tile(map_url, "main", col, row)
 			if map_cell > 1 then
 				is_collision = true
 				tilemap.set_tile("#grid", "main", x, y, COLLISION_COLOR)

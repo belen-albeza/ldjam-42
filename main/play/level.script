@@ -21,7 +21,10 @@ function init(self)
 	self.mouse_x = 0
 	self.mouse_y = 0
 
-	self.queued_block = spawn_memblock(QUEUE_X, QUEUE_Y)
+	self.blocks = {}
+	self.placed_cache = {}
+
+	self.queued_block = spawn_memblock(self, QUEUE_X, QUEUE_Y)
 	self.active_block = nil -- spawn_memblock(self.mouse_x, self.mouse_y)
 end
 
@@ -36,12 +39,11 @@ function update(self, dt)
 end
 
 function on_message(self, message_id, message, sender)
-	if message_id == hash("was_memblock_placed") then
-		if message.result then 
-			go.delete(self.active_block)
-			self.active_block = nil
-			self.queued_block = spawn_memblock(QUEUE_X, QUEUE_Y)
-		end
+	if message_id == hash("memblock_placed") then
+		--go.delete(self.active_block)
+		msg.post(self.active_block, "disable")
+		self.active_block = nil
+		self.queued_block = spawn_memblock(self, QUEUE_X, QUEUE_Y)
 	elseif message_id == hash("cursor_overlap_result") then
 		if message.result then
 			self.active_block = self.queued_block
@@ -60,7 +62,7 @@ function on_input(self, action_id, action)
 	elseif action_id == hash("touch") and action.pressed then -- mouse click
 		if self.active_block then
 			msg.post(self.active_block, "place_into_map")
-		elseif self.queued_block then
+		else
 			msg.post(self.queued_block, "check_cursor_overlap", {x = action.screen_x, y = action.screen_y })
 		end
 	end
@@ -68,12 +70,16 @@ end
 
 -- ----------------------------------------------------------
 
-function spawn_memblock(x, y)
+function spawn_memblock(self, x, y)
 	local color = math.random(MIN_BLOCK_COLOR, MAX_BLOCK_COLOR)
 	local template = BLOCK_TYPES[math.random(#BLOCK_TYPES)]
 
-	local memblock = factory.create("membank#factory", vmath.vector3(x, y, 0.5), nil,
-		{ template = hash(template), map = msg.url("membank#map"), color = color })
+	local url = msg.url("main:/level/membank")
+
+	local memblock = factory.create("memblock_spawner#factory", vmath.vector3(x, y, 0.5), nil,
+		{ template = hash(template), bank = url, color = color })
+	table.insert(self.blocks, memblock)
+		
 	return memblock
 end
 
